@@ -2,3 +2,6 @@
 work
 .nextflow.log*
 cleanup.sh
+data
+test_data
+output

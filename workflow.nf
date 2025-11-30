@@ -30,6 +30,8 @@ process HAPLOTYPECALLER {
 }
 
 process BCFTOOLS_HC {
+    publishDir "$workflow.outputDir", mode:'copy'
+
     input:
     tuple val(sample_id), path(vcfs), path(tbi)
 
@@ -74,6 +76,8 @@ process EAGLE2 {
 }
 
 process BCFTOOLS_EAGLE {
+    publishDir "$workflow.outputDir", mode:'copy'
+
     input:
     tuple val(sample_id), path(bcfs)
 
@@ -95,18 +99,111 @@ process BCFTOOLS_EAGLE {
     """
 }
 
+process DOWNLOAD_TEST_DATA {
+    publishDir "$workflow.projectDir", mode:'copy'
+
+    output:
+    tuple val("$workflow.projectDir/test_data/project_run.csv"), file('test_data/project_run.csv'), path('test_data')
+    
+    script:
+    """
+    wget -O test_data.tar.gz "https://www.dropbox.com/scl/fi/9dmjdg6f6kqpkgbxm87t7/test_data.tar.gz?rlkey=qdvk54r3dq7ib5t46pnuvjeka&st=b7fc5m5c&dl=0"
+    tar -xzvf test_data.tar.gz
+    """
+}
+
+process DOWNLOAD_REF_PANEL {
+    publishDir "$workflow.outputDir", mode:'copy'
+
+    output:
+    path "1000G_hg38"
+    
+    script:
+    """
+    wget -O 1000G_hg38.zip "https://www.dropbox.com/scl/fi/d0xm2ht5scduspucmr2qb/1000G_hg38.zip?rlkey=niv01mpleiqjosvcljgguf6t9&st=9lxnh2tf&dl=0"
+    unzip 1000G_hg38.zip
+    """
+}
+
+process NUMBAT_PROC_RNA {
+    publishDir "$workflow.outputDir", mode:'copy', pattern: '*_allele_counts.tsv.gz'
+
+    input:
+    tuple val(sample_id), path(rna_bam), path(rna_bai), path(rna_counts), path(rna_barcodes)
+    path(gmap)
+    path(snps)
+    path(panel)
+    path(p_script)
+
+    output:
+    tuple val(sample_id), path("count_alleles/$sample_id/${sample_id}_allele_counts.tsv.gz"), path(rna_counts), path("count_alleles/$sample_id/*.log")
+
+    script:
+    """
+    MEM='$task.memory'
+    mkdir -p count_alleles/$sample_id
+
+    Rscript $p_script \
+        --label $sample_id \
+        --samples $sample_id \
+        --bams $rna_bam \
+        --barcodes $rna_barcodes \
+        --outdir count_alleles/$sample_id \
+        --gmap $gmap \
+        --snpvcf $snps \
+        --paneldir $panel \
+        --ncores $task.cpus
+    """
+}
+
+process NUMBAT_RUN_RNA {
+    publishDir "$workflow.outputDir", mode:'copy'
+
+    input:
+    tuple val(sample_id), path(df_allele), path(rna_counts), path(logs)
+    path(script)
+
+    output:
+    tuple val(sample_id), path("numbat/$sample_id/*")
+
+    script:
+    """
+    MEM='$task.memory'
+    mkdir -p numbat/$sample_id
+
+    Rscript $script \
+        --countmat $rna_counts \
+        --alleledf $df_allele \
+        --ncores $task.cpus \
+        --outdir numbat/$sample_id
+    """
+}
+
 workflow {
     main:
-    samples = channel.fromPath(params.sample_sheet)
-                     .splitCsv(header:true)
+    DOWNLOAD_TEST_DATA()
+    samples = DOWNLOAD_TEST_DATA.out.map { t -> t[1] }.splitCsv(header:true)
+    // samples = channel.fromPath(params.sample_sheet)
+    //                  .splitCsv(header:true)
 
     if (params.numbat_matched_normal_phasing) {
         matched_phasing(samples.map { row -> [row.sample, row.normal_bam, row.normal_bai] })
+        p_script = channel.fromPath('scripts/pileup_no_phase.R')
+        numbat_rna(samples.map { row -> [row.sample, "${projectDir}/${row.rna_bam}", "${projectDir}/${row.rna_bai}", 
+                                         "${projectDir}/${row.rna_counts}", "${projectDir}/${row.rna_barcodes}"] }, 
+                    params.eagle_gmap, matched_phasing.out.phased_snps, p_script)
+    } else {
+        p_script = channel.fromPath('scripts/pileup_and_phase.R')
+        numbat_rna(samples.map { row -> [row.sample, "${projectDir}/${row.rna_bam}", "${projectDir}/${row.rna_bai}", 
+                                         "${projectDir}/${row.rna_counts}", "${projectDir}/${row.rna_barcodes}"] }, 
+                    params.eagle_gmap, params.genome1k_snps, p_script)
     }
 
-    publish: 
-    het_snps = matched_phasing.out.het_snps
-    phased_snps = matched_phasing.out.phased_snps
+    // publish:
+    // het_snps = matched_phasing.out.het_snps
+    // phased_snps = matched_phasing.out.phased_snps
+    // allele_counts = numbat_rna.out.allele_counts
+    // numbat_rna_out = numbat_rna.out.numbat_rna_out
 }
 
 workflow matched_phasing {
@@ -139,9 +236,36 @@ workflow matched_phasing {
     phased_snps = BCFTOOLS_EAGLE.out
 }
 
-output {
-    het_snps {
+workflow numbat_rna {
+    take: 
+    samples
+    gmap
+    snps
+    p_script
+
+    main:
+    script = channel.fromPath("scripts/run_numbat.R")
+    if (params.numbat_matched_normal_phasing) {
+        NUMBAT_PROC_RNA(samples, gmap, snps, null, p_script)
+    } else {
+        panel = DOWNLOAD_REF_PANEL()
+        // panel = channel.fromPath(params.eagle_ref_panel_dir)
+        NUMBAT_PROC_RNA(samples, gmap, snps, panel, p_script)
     }
-    phased_snps{
-    }
+    NUMBAT_RUN_RNA(NUMBAT_PROC_RNA.out, script)
+
+    emit:
+    allele_counts = NUMBAT_PROC_RNA.out
+    numbat_rna_out = NUMBAT_RUN_RNA.out
 }
+
+// output {
+//     het_snps {
+//     }
+//     phased_snps{
+//     }
+//     allele_counts{
+//     }
+//     numbat_rna_out{
+//     }
+// }
