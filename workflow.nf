@@ -130,10 +130,10 @@ process NUMBAT_PROC_RNA {
 
     input:
     tuple val(sample_id), path(rna_bam), path(rna_bai), path(rna_counts), path(rna_barcodes)
-    path(gmap)
-    path(snps)
-    path(panel)
-    path(p_script)
+    each path(gmap)
+    each path(snps)
+    each path(panel)
+    each path(p_script)
 
     output:
     tuple val(sample_id), path("count_alleles/$sample_id/${sample_id}_allele_counts.tsv.gz"), path(rna_counts), path("count_alleles/$sample_id/*.log")
@@ -161,7 +161,7 @@ process NUMBAT_RUN_RNA {
 
     input:
     tuple val(sample_id), path(df_allele), path(rna_counts), path(logs)
-    path(script)
+    each path(script)
 
     output:
     tuple val(sample_id), path("numbat/$sample_id/*")
@@ -186,17 +186,19 @@ workflow {
     // samples = channel.fromPath(params.sample_sheet)
     //                  .splitCsv(header:true)
 
+    gmap = channel.fromPath(params.eagle_gmap)
     if (params.numbat_matched_normal_phasing) {
-        matched_phasing(samples.map { row -> [row.sample, row.normal_bam, row.normal_bai] })
         p_script = channel.fromPath('scripts/pileup_no_phase.R')
+        matched_phasing(samples.map { row -> [row.sample, row.normal_bam, row.normal_bai] })
         numbat_rna(samples.map { row -> [row.sample, "${projectDir}/${row.rna_bam}", "${projectDir}/${row.rna_bai}", 
                                          "${projectDir}/${row.rna_counts}", "${projectDir}/${row.rna_barcodes}"] }, 
-                    params.eagle_gmap, matched_phasing.out.phased_snps, p_script)
+                    gmap, matched_phasing.out.phased_snps, p_script)
     } else {
         p_script = channel.fromPath('scripts/pileup_and_phase.R')
+        snps = channel.fromPath(params.genome1k_snps)
         numbat_rna(samples.map { row -> [row.sample, "${projectDir}/${row.rna_bam}", "${projectDir}/${row.rna_bai}", 
                                          "${projectDir}/${row.rna_counts}", "${projectDir}/${row.rna_barcodes}"] }, 
-                    params.eagle_gmap, params.genome1k_snps, p_script)
+                    gmap, snps, p_script)
     }
 
     // publish:
