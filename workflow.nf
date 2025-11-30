@@ -181,10 +181,13 @@ process NUMBAT_RUN_RNA {
 
 workflow {
     main:
-    DOWNLOAD_TEST_DATA()
-    samples = DOWNLOAD_TEST_DATA.out.map { t -> t[1] }.splitCsv(header:true)
-    // samples = channel.fromPath(params.sample_sheet)
-    //                  .splitCsv(header:true)
+    if (params.download_data) {
+        DOWNLOAD_TEST_DATA()
+        samples = DOWNLOAD_TEST_DATA.out.map { t -> t[1] }.splitCsv(header:true)
+    } else {
+        samples = channel.fromPath(params.sample_sheet)
+                         .splitCsv(header:true)
+    }
 
     gmap = channel.fromPath(params.eagle_gmap)
     if (params.numbat_matched_normal_phasing) {
@@ -250,8 +253,11 @@ workflow numbat_rna {
     if (params.numbat_matched_normal_phasing) {
         NUMBAT_PROC_RNA(samples, gmap, snps, null, p_script)
     } else {
-        panel = DOWNLOAD_REF_PANEL()
-        // panel = channel.fromPath(params.eagle_ref_panel_dir)
+        if (params.download_data) {
+            panel = DOWNLOAD_REF_PANEL()
+        } else {
+            panel = channel.fromPath(params.eagle_ref_panel_dir)
+        }
         NUMBAT_PROC_RNA(samples, gmap, snps, panel, p_script)
     }
     NUMBAT_RUN_RNA(NUMBAT_PROC_RNA.out, script)
