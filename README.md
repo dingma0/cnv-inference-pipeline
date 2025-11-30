@@ -57,21 +57,21 @@ Data necessary for the test run are downloaded automatically. However, they are 
 ```
 ./download.sh
 ```
-in the project directory, then setting the `download_data` parameter in `nextflow.config` to `false`. Alteratively, the data is also available [here](https://drive.google.com/drive/folders/1yQ0T4raQdOHwlhFJWQl0BWm7Ef2ZAXQj?usp=sharing), which can be downloaded and moved to the project directory, then uncompressed with `tar` and `zip`.
+in the project directory, then setting the `download_data` parameter in `nextflow.config` to `false`. Alteratively, the data is also available [here](https://drive.google.com/drive/folders/1yQ0T4raQdOHwlhFJWQl0BWm7Ef2ZAXQj?usp=sharing), which can be downloaded and moved to the project directory, then uncompressed with `tar -xvzf` and `unzip`.
 ## Data
 The datasets analyzed by the default configuration are publically available from 10X Genomics:
 
 ### [B Cell Lymphoma 10X Multiome](https://www.10xgenomics.com/datasets/fresh-frozen-lymph-node-with-b-cell-lymphoma-14-k-sorted-nuclei-1-standard-2-0-0) [[7](#references)]
-- 14k single-nuclei.
+- 14k single-nuclei RNA + ATAC.
 - Flash frozen lymph node from patient diagnosed with diffuse small lymphocytic lymphoma.
 
 ### [Healthy PBMC 10X Multiome](https://www.10xgenomics.com/datasets/pbmc-from-a-healthy-donor-no-cell-sorting-3-k-1-standard-2-0-0) [[8](#references)]
-- 3k single-nuclei.
+- 3k single-nuclei RNA + ATAC.
 - Cryopreserved peripheral blood mononuclear cells from a healthy human donor.
 
 Briefly, BAM files and features counts matrixes for RNA were obtained from the 10X Genomics official website. 1k and 1.5k cells were subsetted from the PBMC and BCL datasets, respectively. BAM files were further downsampled to 20% reads. 
 
-Given that CNVs are features of genomic instability, we should expect substantial CNV events from the BCL dataset, while the PBMC dataset should be mostly quiet.
+Given that CNVs are features of genomic instability, we should expect substantial CNV events from the BCL (cancer) dataset, while the PBMC (healthy) dataset should be mostly quiet.
 
 ## Output
 Pipeline outputs are stored in two directories under the project directory:
@@ -90,12 +90,14 @@ Expected outputs of the above for the two test samples:
 ### 10xBCL 
 `panel_1.png`:
 ![](images/BCL_panel_1.png)
+
 `bulk_subtrees_1.png`:
 ![](images/BCL_bulk_subtrees_1.png)
 
 ### 10xPBMC
-`panel_1.png`:
+`panel_1.png`: \
 Not generated for this sample as Numbat terminates early for samples with few CNVs.
+
 `bulk_subtrees_1.png`:
 ![](images/PBMC_bulk_subtrees_1.png)
 
