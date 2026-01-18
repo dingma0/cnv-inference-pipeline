@@ -95,7 +95,7 @@ process BCFTOOLS_EAGLE {
     done
 
     bcftools concat -a -Ob --threads $task.cpus $bcfs | \
-        bcftools sort -Oz -m \${MEM%% *}G -W=tbi -T tmp -o phasing/${sample_id}/${sample_id}_phased_snps.bcf 
+        bcftools sort -Oz -m \${MEM%% *}G -W=tbi -T tmp -o phasing/${sample_id}/${sample_id}_phased_snps.vcf.gz
     """
 }
 
@@ -141,7 +141,35 @@ process NUMBAT_RNA_COUNT_ALLELES {
     """
 }
 
-process NUMBAT_RNA_GENE_RUN {
+process NUMBAT_RNA_BIN_PREP {
+    input:
+    tuple val(sample_id), path(allele_counts), path(rna_counts), path(rna_barcodes), path(ref_counts), path(ref_barcodes)
+    each path(script)
+    each path(gene2bin)
+
+    output:
+    tuple val(sample_id), path(allele_counts), path("binned_counts/${sample_id}/${sample_id}_rna_binned.rds"), path("binned_counts/${sample_id}/${sample_id}_rna_ref_binned.rds")
+
+    script:
+    """
+    mkdir -p binned_counts/$sample_id
+
+    Rscript $script \
+        --rnaCountsFile $rna_counts \
+        --outFile binned_counts/${sample_id}/${sample_id}_rna_binned.rds \
+        --barcodesKeep $rna_barcodes \
+        --geneBinMapCSVFile $gene2bin
+
+    Rscript $script \
+        --rnaCountsFile $ref_counts \
+        --outFile binned_counts/${sample_id}/${sample_id}_rna_ref_binned.rds \
+        --barcodesKeep $ref_barcodes \
+        --geneBinMapCSVFile $gene2bin \
+        --generateAggRef
+    """
+}
+
+process NUMBAT_RNA_GENE {
     publishDir "$workflow.outputDir", mode:'copy'
 
     input:
@@ -162,6 +190,33 @@ process NUMBAT_RNA_GENE_RUN {
         --ref_mat $ref_counts \
         --ref_ids $ref_barcodes \
         --ncores $task.cpus \
+        --outdir numbat/$sample_id
+    """
+}
+
+process NUMBAT_RNA_BIN {
+    publishDir "$workflow.outputDir", mode:'copy'
+
+    input:
+    tuple val(sample_id), path(df_allele), path(rna_binned), path(ref_binned)
+    each path(script)
+    each path(bins)
+    each path(parL)
+
+    output:
+    tuple val(sample_id), path("numbat/$sample_id/*")
+
+    script:
+    """
+    MEM='$task.memory'
+    mkdir -p numbat/$sample_id
+
+    Rscript $script \
+        --countmat $rna_binned \
+        --alleledf $df_allele \
+        --ref $ref_binned \
+        --gtf $bins \
+        --parL $parL \
         --outdir numbat/$sample_id
     """
 }
@@ -240,12 +295,25 @@ workflow numbat_rna {
         NUMBAT_RNA_COUNT_ALLELES(samples, gmap, panel, p_script)
     }
 
-    gene_script = channel.fromPath("scripts/run_numbat.R")
-    NUMBAT_RNA_GENE_RUN(NUMBAT_RNA_COUNT_ALLELES.out, gene_script)
+    if (params.binned_mode) {
+        bin_script = channel.fromPath("scripts/get_binned_rna.R")
+        gene2bin = channel.fromPath(params.gene_to_bin)
+        NUMBAT_RNA_BIN_PREP(NUMBAT_RNA_COUNT_ALLELES.out, bin_script, gene2bin)
+
+        run_script = channel.fromPath("scripts/run_numbat_multiome.R")
+        bins = channel.fromPath(params.bin_obj)
+        parL = channel.fromPath(params.parL)
+        NUMBAT_RNA_BIN(NUMBAT_RNA_BIN_PREP.out, run_script, bins, parL)
+        numbat_rna_out = NUMBAT_RNA_BIN.out
+    } else {
+        gene_script = channel.fromPath("scripts/run_numbat.R")
+        NUMBAT_RNA_GENE(NUMBAT_RNA_COUNT_ALLELES.out, gene_script)
+        numbat_rna_out = NUMBAT_RNA_GENE.out
+    }
 
     emit:
     allele_counts = NUMBAT_RNA_COUNT_ALLELES.out
-    numbat_rna_out = NUMBAT_RNA_GENE_RUN.out
+    numbat_rna_out = numbat_rna_out
 }
 
 // output {

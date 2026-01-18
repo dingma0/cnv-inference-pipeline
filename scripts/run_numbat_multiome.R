@@ -79,7 +79,7 @@ if(!is.null(args$parL)){
 }
 
 covs <- alleleCov %>% filter(cell %in% df_allele$cell) %>% pull(snp_idN)
-numbatPars$ncores <- min(numbatPars$ncores,13)
+# numbatPars$ncores <- min(numbatPars$ncores,13)
 if(mean(covs)>150){
   df_allele <-  df_allele%>%sample_frac(frac)
 }
