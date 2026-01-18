@@ -9,6 +9,7 @@ parser = add_option(parser, '--bams', default = NULL, type = "character",  help 
 parser = add_option(parser, '--barcodes', default = NULL, type = "character", help = "Cell barcode file(s); one per sample, comma delimited if multiple.")
 parser = add_option(parser, '--gmap', default = NULL, type = "character", help = "Path to genetic map provided by Eagle2 (e.g. Eagle_v2.4.1/tables/genetic_map_hg38_withX.txt.gz)")
 parser = add_option(parser, '--snpvcf', default = NULL, type = "character", help = "SNP VCF for pileup")
+parser = add_option(parser, '--paneldir', default = NULL, type = "character", help = "Directory to phasing reference panel (BCF files)")
 parser = add_option(parser, '--outdir', default = NULL, type = "character", help = "Output directory")
 parser = add_option(parser, '--ncores', default = 1, type = "integer", help = "Number of cores")
 parser = add_option(parser, '--UMItag', default = "Auto", type = "character", help = "UMI tag(s) in bam; should be 'Auto' or 'UB' for 10x scRNA-seq, 'None' for scATAC-seq, and XM for Slide-seq; comma delimited if multiple data modalities in different samples.")

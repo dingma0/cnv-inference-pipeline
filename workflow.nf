@@ -116,28 +116,16 @@ process NUMBAT_RNA_COUNT_ALLELES {
     MEM='$task.memory'
     mkdir -p count_alleles/$sample_id
 
-    if [[ -d "$panel" ]]; then
-        Rscript $p_script \
-            --label $sample_id \
-            --samples $sample_id \
-            --bams $rna_bam \
-            --barcodes $rna_barcodes \
-            --outdir count_alleles/$sample_id \
-            --gmap $gmap \
-            --snpvcf $snps \
-            --paneldir $panel \
-            --ncores $task.cpus
-    else
-        Rscript $p_script \
-            --label $sample_id \
-            --samples $sample_id \
-            --bams $rna_bam \
-            --barcodes $rna_barcodes \
-            --outdir count_alleles/$sample_id \
-            --gmap $gmap \
-            --snpvcf $snps \
-            --ncores $task.cpus
-    fi
+    Rscript $p_script \
+        --label $sample_id \
+        --samples $sample_id \
+        --bams $rna_bam \
+        --barcodes $rna_barcodes \
+        --outdir count_alleles/$sample_id \
+        --gmap $gmap \
+        --snpvcf $snps \
+        --paneldir $panel \
+        --ncores $task.cpus
     """
 }
 
@@ -288,12 +276,8 @@ workflow numbat_rna {
     p_script
 
     main:
-    if (params.numbat_matched_normal_phasing) {
-        NUMBAT_RNA_COUNT_ALLELES(samples, gmap, [], p_script)
-    } else {
-        panel = channel.fromPath(params.eagle_ref_panel_dir)
-        NUMBAT_RNA_COUNT_ALLELES(samples, gmap, panel, p_script)
-    }
+    panel = channel.fromPath(params.eagle_ref_panel_dir)
+    NUMBAT_RNA_COUNT_ALLELES(samples, gmap, panel, p_script)
 
     if (params.binned_mode) {
         bin_script = channel.fromPath("scripts/get_binned_rna.R")
