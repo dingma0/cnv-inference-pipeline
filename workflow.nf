@@ -103,7 +103,7 @@ process NUMBAT_RNA_COUNT_ALLELES {
     publishDir "$workflow.outputDir", mode:'copy', pattern: '*_allele_counts.tsv.gz'
 
     input:
-    tuple val(sample_id), path(rna_bam), path(rna_bai), path(rna_counts), path(rna_barcodes), path(ref_counts), path(ref_barcodes), path(snps)
+    tuple val(sample_id), path(rna_bam), path(rna_bai), path(rna_counts), path(rna_barcodes), path(ref_counts, stageAs: 'ref.rds'), path(ref_barcodes), path(snps)
     each path(gmap)
     each path(panel)
     each path(p_script)
@@ -116,7 +116,7 @@ process NUMBAT_RNA_COUNT_ALLELES {
     MEM='$task.memory'
     mkdir -p count_alleles/$sample_id
 
-    if [[ -f "$panel" ]]; then
+    if [[ -d "$panel" ]]; then
         Rscript $p_script \
             --label $sample_id \
             --samples $sample_id \
