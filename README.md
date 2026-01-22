@@ -4,11 +4,11 @@ Inference of copy number variation from scRNA-seq and scATAC-seq (TBA) data.
 Author: Ding Ma
 
 ## Introduction
-Copy-number variations (CNV) are a prominent feature of many cancer types, characterized by gains or losses of genomic regions [[1](#references)]. These variations can reveal the deletion or amplification of cancer-related genes, subclonal structures, and genomic patterns associated with pathogenic phenotypes [[2](#references)]. Traditionally, CNVs are profiled via bulk whole genome sequencing (WGS), which limits the resolution necessary to dissect intra-tumour heterogeneity [[3](#references)]. To address this limitation, single-cell DNA sequencing (scDNA-seq) technologies was developed to enable characterization of CNVs on a single-cell basis. 
+Copy-number variations (CNV) are a prominent feature of many cancer types, characterized by gains or losses of genomic regions [[1](#references)]. These variations can reveal the deletion or amplification of cancer-related genes, subclonal structures, and genomic patterns associated with pathogenic phenotypes [[2](#references)]. Traditionally, CNVs are profiled via bulk whole genome sequencing (WGS), which limits the resolution necessary to dissect intra-tumour heterogeneity [[3](#references)]. To address this limitation, single-cell DNA sequencing (scDNA-seq) technologies have been developed to enable the characterization of CNVs on a single-cell basis. 
 
 However, these methods remain constrained by high cost, low availability, and technical noise [[4](#references)]. To overcome these challenges, a growing number of computational tools have been developed to infer CNVs from either scRNA-seq or scATAC-seq data [[5](#references)]. 
 
-CNV inference from RNA and ATAC data are not yet widely adopted in current single-cell analysis pipelines, and, tools are generally less maintained with poor useability. As such, this project aims to enable reproducible workflows for popular CNV inference tools. This pipeline currently covers the basic workflow for Numbat, a tool for inferring allele-specific CNVs from scRNA-seq data [[6](#references)]: 
+CNV inference from RNA and ATAC data is not yet widely adopted in current single-cell analysis pipelines, and tools are generally less maintained with poor usability. As such, this project aims to enable reproducible workflows for popular CNV inference tools. This pipeline currently covers the basic workflow for Numbat, a tool for inferring allele-specific CNVs from scRNA-seq data [[6](#references)]: 
 
 1. Matched normal WGS phasing (optional)
 2. 1000Genomes Variant Reference Panel Preparation
@@ -25,7 +25,7 @@ CNV inference from RNA and ATAC data are not yet widely adopted in current singl
 
 ## Usage
 ### Installation
-Installing and running this pipeline requires [`git`](https://git-scm.com/install/), [`nextflow`](https://www.nextflow.io/docs/latest/install.html), [`singularity`](https://docs.sylabs.io/guides/3.0/user-guide/installation.html). Please refer to the corresponding documentations for installation. All other dependencies are automatically provided via Docker containers during process execution: 
+Installing and running this pipeline requires [`git`](https://git-scm.com/install/), [`nextflow`](https://www.nextflow.io/docs/latest/install.html), [`singularity`](https://docs.sylabs.io/guides/3.0/user-guide/installation.html). Please refer to the corresponding documentation for installation. All other dependencies are automatically provided via Docker containers during process execution: 
 
 - broadinstitute/gatk:latest
 - staphb/bcftools:latest
@@ -49,36 +49,36 @@ The pipeline can be run with
 ```
 nextflow run workflow.nf -profile local -resume
 ```
-Note: Slurm execution is available with `-profile slurm`. Current resource allocations are intended for slurm or local execution on servers. If running on a personal computer, process resources can be tuned in `nextflow.config` to match hardware capabilities. Only procceses prefixed with 'NUMBAT' or 'DOWNLOAD' are ran for the current configuration. 
+Note: Slurm execution is available with `-profile slurm`. Current resource allocations are intended for Slurm or local execution on servers. If running on a personal computer, process resources can be tuned in `nextflow.config` to match hardware capabilities. Only processes prefixed with 'NUMBAT' or 'DOWNLOAD' are run for the current configuration. 
 
 ## Troubleshooting
 
-Data necessary for the test run are downloaded automatically. However, they are stored on Dropbox, which may experience instabilty or rate limit. In case of error during the DOWNLOAD_TEST_DATA process, consider running
+The necessary data for the test run is downloaded automatically. However, they are stored on Dropbox, which may experience instability or rate limits. In case of error during the DOWNLOAD_TEST_DATA process, consider running
 ```
 ./download.sh
 ```
-in the project directory, then setting the `download_data` parameter in `nextflow.config` to `false`. Alteratively, the data is also available [here](https://drive.google.com/drive/folders/1yQ0T4raQdOHwlhFJWQl0BWm7Ef2ZAXQj?usp=sharing), which can be downloaded and moved to the project directory, then uncompressed with `tar -xvzf` and `unzip`.
+in the project directory, then setting the `download_data` parameter in `nextflow.config` to `false`. Alternatively, the data is also available [here](https://drive.google.com/drive/folders/1yQ0T4raQdOHwlhFJWQl0BWm7Ef2ZAXQj?usp=sharing), which can be downloaded and moved to the project directory, then uncompressed with `tar -xvzf` and `unzip`.
 ## Data
-The datasets analyzed by the default configuration are publically available from 10X Genomics:
+The datasets analyzed by the default configuration are publicly available from 10X Genomics:
 
 ### [B Cell Lymphoma 10X Multiome](https://www.10xgenomics.com/datasets/fresh-frozen-lymph-node-with-b-cell-lymphoma-14-k-sorted-nuclei-1-standard-2-0-0) [[7](#references)]
 - 14k single-nuclei RNA + ATAC.
-- Flash frozen lymph node from patient diagnosed with diffuse small lymphocytic lymphoma.
+- Flash frozen lymph node from a patient diagnosed with diffuse small lymphocytic lymphoma.
 
 ### [Healthy PBMC 10X Multiome](https://www.10xgenomics.com/datasets/pbmc-from-a-healthy-donor-no-cell-sorting-3-k-1-standard-2-0-0) [[8](#references)]
 - 3k single-nuclei RNA + ATAC.
 - Cryopreserved peripheral blood mononuclear cells from a healthy human donor.
 
-Briefly, BAM files and features counts matrixes for RNA were obtained from the 10X Genomics official website. 1k and 1.5k cells were subsetted from the PBMC and BCL datasets, respectively. BAM files were further downsampled to 20% reads. 
+Briefly, BAM files and feature count matrices for RNA were obtained from the 10X Genomics official website. 1k and 1.5k cells were subsetted from the PBMC and BCL datasets, respectively. BAM files were further downsampled to 20% of the original reads. 
 
-Given that CNVs are features of genomic instability, we should expect substantial CNV events from the BCL (cancer) dataset, while the PBMC (healthy) dataset should be mostly quiet.
+Given that CNV is a feature of genomic instability, we should expect substantial CNV events in the BCL (cancer) dataset, while the PBMC (healthy) dataset should be mostly copy-number neutral (diploid).
 
 ## Output
 Pipeline outputs are stored in two directories under the project directory:
 - `test_data` : contains downloaded data for the current configuration.
 - `output` : workflow results.
 - `output/1000G_hg38` : 1000G variant reference panel for phasing.
-- `output/numbat` : Analysis results for Numbat. Outputs are stored in per-sample sub-directories. For full description of the output files please see [Numbat guide](https://kharchenkolab.github.io/numbat/articles/descriptions.html). 
+- `output/numbat` : Analysis results for Numbat. Outputs are stored in per-sample sub-directories. For a full description of the output files, please see [Numbat guide](https://kharchenkolab.github.io/numbat/articles/descriptions.html). 
 
 The main output files we will look at are 
 
@@ -117,7 +117,7 @@ Not generated for this sample as Numbat terminates early for samples with few CN
 
 [3] David Lähnemann, Johannes Köster, Ewa Szczurek, Davis J. McCarthy, Stephanie C. Hicks, Mark D. Robinson, Catalina A. Vallejos, Kieran R. Campbell, Niko Beerenwinkel, Ahmed Mahfouz, Luca Pinello, Pavel Skums, Alexandros Stamatakis, Camille Stephan-Otto Attolini, Samuel Aparicio, Jasmijn Baaijens, Marleen Balvert, Buys De Barbanson, Antonio Cappuccio, Giacomo Corleone, Bas E. Dutilh, Maria Florescu, Victor Guryev, Rens Holmer, Katharina Jahn, Thamar Jessurun Lobo, Emma M. Keizer, Indu Khatri, Szymon M. Kielbasa, Jan O. Korbel, Alexey M. Kozlov, Tzu-Hao Kuo, Boudewijn P.F. Lelieveldt, Ion I. Mandoiu, John C. Marioni, Tobias Marschall, Felix Mölder, Amir Niknejad, Alicja R ˛aczkowska, Marcel Reinders, Jeroen De Ridder, Antoine-Emmanuel Saliba, Antonios Somarakis, Oliver Stegle, Fabian J. Theis, Huan Yang, Alex Zelikovsky, Alice C. McHardy, Benjamin J. Raphael, Sohrab P. Shah, and Alexander Schönhuth. Eleven grand challenges in single-cell data science. 21(1):31. ISSN 1474-760X. doi: 10.1186/s13059-020-1926-6. URL https://genomebiology.biomedcentral.com/articles/10.1186/s13059-020-1926-6.
 
-[4] Minfang Song, Shuai Ma, Gong Wang, Yukun Wang, Zhenzhen Yang, Bin Xie, Tongkun Guo, Xingxu Huang, and Liye Zhang. Benchmarking copy number aberrations inference tools using single-cell multi-omics datasets. 26(2):bbaf076. ISSN 1467-5463, 1477-4054. doi: 10.1093/ bib/bbaf076. URL https://academic.oup.com/bib/article/doi/10.1093/bib/bbaf076/8051529.
+[4] Minfang Song, Shuai Ma, Gong Wang, Yukun Wang, Zhenzhen Yang, Bin Xie, Tongkun Guo, Xingxu Huang, and Liye Zhang. Benchmarking copy number aberrations inference tools using single-cell multi-omics datasets. 26(2):bbaf076. ISSN 1467-5463, 1477-4054. doi: 10.1093/bib/bbaf076. URL https://academic.oup.com/bib/article/doi/10.1093/bib/bbaf076/8051529.
 
 [5] Katharina T. Schmid, Aikaterini Symeonidi, Dmytro Hlushchenko, Maria L. Richter, Andréa E.Tijhuis, Floris Foijer, and Maria Colomé-Tatché. Benchmarking scRNA-seq copy number variation callers. 16(1):8777. ISSN 2041-1723. doi: 10.1038/s41467-025-62359-9. URL https://www.nature.com/articles/s41467-025-62359-9.
 
